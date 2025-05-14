@@ -34,7 +34,7 @@ class Gs2gsPipeline(VanillaPipeline):
                 step: current iteration step to update sampler if using DDP (distributed)
             """
 
-            camera, batch = self.datamanager.next_train(step) #
+            camera, batch = self.datamanager.next_train(step) 
             model_outputs = self.model(camera)
             metrics_dict = self.model.get_metrics_dict(model_outputs, batch)
             loss_dict = self.model.get_loss_dict(model_outputs, batch, metrics_dict)
