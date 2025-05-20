@@ -38,7 +38,8 @@ class Gs2gsPipeline(VanillaPipeline):
             model_outputs = self.model(camera)
             metrics_dict = self.model.get_metrics_dict(model_outputs, batch)
             loss_dict = self.model.get_loss_dict(model_outputs, batch, metrics_dict)
-
+            # print(loss_dict, end="\n")
+            
             return model_outputs, loss_dict, metrics_dict
 
     def forward(self):
