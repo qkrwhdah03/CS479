@@ -20,6 +20,7 @@ class Gs2gsModelConfig(SplatfactoModelConfig):
     lpips_loss_weight: float = 0.1
     num_random: int = 50000
     stop_split_at: int = 15000
+    refine_every: int = 100
 
 
 class Gs2gsModel(SplatfactoModel):

@@ -18,7 +18,7 @@ gs2gs = MethodSpecification(
         steps_per_eval_batch= 500, # Numebr of steps between randomly sampled batches of rays
         steps_per_eval_image= 500, # Number of steps between single eval images
         steps_per_eval_all_images= 25000, # Number of steps between eval all images
-        max_num_iterations= 15000, # Maximum number of iterations to run
+        max_num_iterations= 3000, # Maximum number of iterations to run
         mixed_precision= False, # Whether or not to use mixed precision for training
         save_only_latest_checkpoint= True, # Whether to only save the latest checkpoint or all checkpoints.
         load_dir= None, # Optionally specify a pre-trained model directory to load from.
@@ -70,16 +70,17 @@ gs2gs = MethodSpecification(
                 use_lpips_loss= True,
                 lpips_loss_weight= 0.1,
                 num_random= 50000,
-                stop_split_at= 15000
+                stop_split_at= 15000,
+                refine_every= 100
             ) 
         ),
         optimizers={
            "means": {
-                "optimizer": AdamOptimizerConfig(lr=1.6e-4, eps=1e-15),
-                "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=1.6e-6,
-                    max_steps=50000,
-                ),
+            "optimizer": AdamOptimizerConfig(lr=1.6e-4, eps=1e-15),
+            "scheduler": ExponentialDecaySchedulerConfig(
+                lr_final=1.6e-6,
+                max_steps=10000,
+            ),
             },
             "features_dc": {
                 "optimizer": AdamOptimizerConfig(lr=0.0025, eps=1e-15),
@@ -97,9 +98,18 @@ gs2gs = MethodSpecification(
                 "optimizer": AdamOptimizerConfig(lr=0.005, eps=1e-15),
                 "scheduler": None,
             },
-            "quats": {
-                "optimizer": AdamOptimizerConfig(lr=0.001, eps=1e-15), 
-                "scheduler": None
+            "quats": {"optimizer": AdamOptimizerConfig(lr=0.001, eps=1e-15), "scheduler": None},
+            "camera_opt": {
+                "optimizer": AdamOptimizerConfig(lr=1e-4, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=5e-7, max_steps=10000, warmup_steps=1000, lr_pre_warmup=0
+                ),
+            },
+            "bilateral_grid": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4, max_steps=10000, warmup_steps=1000, lr_pre_warmup=0
+                ),
             },
         },
         viewer=ViewerConfig(num_rays_per_chunk=1 << 15), 
