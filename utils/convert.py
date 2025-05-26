@@ -42,9 +42,11 @@ if __name__ == '__main__':
     model = Model()
 
     for path in tqdm(image_paths):
-        image = io.read_image(str(path)).unsqueeze(0) / 255.0  # [1, C, H, W] tensor with pixel values of [0,1]
+        image = io.read_image(str(path)) / 255.0  # [1, C, H, W] tensor with pixel values of [0,1]
         converted_image = model.convert(image)
-
+        
+        assert image.shape == converted_image.shape, "Converted Image Shape changed"
+        
         image_name = path.name
         save_path = converted_image_path.joinpath(image_name)
         vutils.save_image(converted_image, save_path)
