@@ -1,3 +1,7 @@
+# Adapted from style-nerf2nerf (MIT License)
+# https://github.com/haruolabs/style-nerf2nerf
+
+
 import torch
 import torch.nn as nn
 
