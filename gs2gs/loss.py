@@ -1,29 +1,29 @@
 import torch
-
+import torch.nn as nn
 
 class VGG19(torch.nn.Module):
 
     def __init__(self):
         super(VGG19, self).__init__()
 
-        self.block1_conv1 = torch.nn.Conv2d(3, 64, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block1_conv2 = torch.nn.Conv2d(64, 64, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block1_conv1 = nn.Conv2d(3, 64, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block1_conv2 = nn.Conv2d(64, 64, (3,3), padding=(1,1), padding_mode='reflect')
 
-        self.block2_conv1 = torch.nn.Conv2d(64, 128, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block2_conv2 = torch.nn.Conv2d(128, 128, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block2_conv1 = nn.Conv2d(64, 128, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block2_conv2 = nn.Conv2d(128, 128, (3,3), padding=(1,1), padding_mode='reflect')
 
-        self.block3_conv1 = torch.nn.Conv2d(128, 256, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block3_conv2 = torch.nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block3_conv3 = torch.nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block3_conv4 = torch.nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block3_conv1 = nn.Conv2d(128, 256, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block3_conv2 = nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block3_conv3 = nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block3_conv4 = nn.Conv2d(256, 256, (3,3), padding=(1,1), padding_mode='reflect')
 
-        self.block4_conv1 = torch.nn.Conv2d(256, 512, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block4_conv2 = torch.nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block4_conv3 = torch.nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
-        self.block4_conv4 = torch.nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block4_conv1 = nn.Conv2d(256, 512, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block4_conv2 = nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block4_conv3 = nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
+        self.block4_conv4 = nn.Conv2d(512, 512, (3,3), padding=(1,1), padding_mode='reflect')
 
-        self.relu = torch.nn.ReLU(inplace=True)
-        self.downsampling = torch.nn.AvgPool2d((2,2))
+        self.relu = nn.ReLU(inplace=True)
+        self.downsampling = nn.AvgPool2d((2,2))
 
     def forward(self, image):
         
@@ -61,4 +61,26 @@ class VGG19(torch.nn.Module):
         block4_conv3 = self.relu(self.block4_conv3(block4_conv2))
         block4_conv4 = self.relu(self.block4_conv4(block4_conv3))
 
-        return [block1_conv1, block1_conv2, block2_conv1, block2_conv2, block3_conv1, block3_conv2, block3_conv3, block3_conv4, block4_conv1, block4_conv2, block4_conv3, block4_conv4]
+        
+        return [torch.var_mean(t, dim=(2,3), unbiased=False) for t in [block1_conv1, block2_conv1, block3_conv1, block4_conv1]], block4_conv4
+    
+    def vgg_loss(self, gt_images, pred_images, alpha = 1.0):
+        # pred)images : predicted images by the model 
+        # gt_images : ground truth images
+        # Both tensor should be the same shape in the form of [B, C, H, W]
+        # Pixel values should be normalized to [0,1]
+
+        gt_stats, gt_feature = self.forward(gt_images)
+        pred_stats, pred_feature = self.forward(pred_images)
+
+        # Matching Feature
+        content_loss = torch.sum((gt_feature - pred_feature) ** 2)
+
+        # Matching Feature Statistics
+        style_loss = 0.0
+        for gt_stat, pred_stat in zip(gt_stats, pred_stats):
+            style_loss += torch.sum((gt_stat[0] - pred_stat[0]) ** 2)
+            style_loss += torch.sum((gt_stat[1] - pred_stat[1]) ** 2)
+
+
+        return content_loss + alpha * style_loss

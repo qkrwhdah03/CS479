@@ -51,12 +51,12 @@ gs2gs = MethodSpecification(
 
                     #depth_unit_scale_factor= 1e-3,  # float, Converts depth values to meters. Default assumes input is in millimeters.
                     #mask_color= None,  # Optional[Tuple[float, float, float]], Replace unknown pixels with this color (used if masks are present).
-                    #load_3D_points= False,  # Whether to load 3D points from COLMAP reconstruction.
+                    load_3D_points= True,  # Whether to load 3D points from COLMAP reconstruction.
                     ),
                 #camera_res_scale_factor= 1.0, #The scale factor for scaling spatial data such as images, mask, semantics along with relevant information about camera intrinsics
                 #eval_num_images_to_sample_from= -1, # Number of images to sample during eval iteration
                 #eval_num_times_to_repeat_images= -1, # When not evaluating on all images, number of iterations before picking
-                #cache_images= "gpu", # Literal["cpu", "gpu", "disk"]
+                cache_images= "cpu", # Literal["cpu", "gpu", "disk"]
                 #max_thread_workers= None, # The maximum number of threads to use for caching images. If None, uses all available threads.
                 #train_cameras_sampling_strategy= "random", #  Literal["random", "fps"] 
                 #train_cameras_sampling_seed= 42, # Random seed for sampling train cameras. Fixing seed may help reduce variance of trained models across different runs.
@@ -66,12 +66,11 @@ gs2gs = MethodSpecification(
                 #cache_compressed_images= False, # If True, cache raw image files as byte strings to RAM.
             ),
             model= Gs2gsModelConfig(
+                warmup= True,
                 use_l1_loss= False,
-                use_lpips_loss= True,
-                lpips_loss_weight= 0.1,
-                num_random= 50000,
-                stop_split_at= 15000,
-                refine_every= 100
+                use_lpips_loss= False,
+                weight= 0.05,
+                style_loss_weight= 0.5,
             ) 
         ),
         optimizers={

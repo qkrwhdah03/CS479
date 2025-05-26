@@ -7,18 +7,30 @@ from typing import Type, Optional, Tuple
 from nerfstudio.models.splatfacto import SplatfactoModelConfig, SplatfactoModel
 
 import torch
+import torch.nn.functional as F
+from torchmetrics.image import PeakSignalNoiseRatio
+from pytorch_msssim import SSIM
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from nerfstudio.model_components.losses import L1Loss, MSELoss
+
+from gs2gs.loss import VGG19
 
 
 @dataclass
 class Gs2gsModelConfig(SplatfactoModelConfig):
     _target: Type = field(default_factory= lambda: Gs2gsModel)
-    num_downscales: int = 0
+    num_downscales: int = 3
+
+    warmup: bool = True
+    # warmup
     use_l1_loss: bool = False
-    use_lpips_loss: bool = True
-    lpips_loss_weight: float = 0.1
-    num_random: int = 50000
+    use_lpips_loss: bool = False
+    weight: float = 0.2
+
+    # style transfer
+    style_loss_weight: float = 1.0
+
+    num_random: int = 10000
     stop_split_at: int = 15000
     refine_every: int = 100
 
@@ -29,34 +41,56 @@ class Gs2gsModel(SplatfactoModel):
     def populate_modules(self):
         super().populate_modules()
 
-        if self.config.use_l1_loss:
-            self.rgb_loss = L1Loss()
-        else:
-            self.rgb_loss = MSELoss()
+        if self.config.warmup:
 
-        self.lpips = LearnedPerceptualImagePatchSimilarity()
+            if self.config.use_l1_loss:
+                self.rgb_loss = L1Loss()
+            else:
+                self.rgb_loss = MSELoss()
+            
+            self.psnr = PeakSignalNoiseRatio(data_range=1.0)
+            self.ssim = SSIM(data_range=1.0, size_average=True, channel=3)
+            self.lpips = LearnedPerceptualImagePatchSimilarity(normalize=True)
+        
+        else :
+            device = next(self.parameters()).device
+            self.vgg = VGG19().to(device)
+            self.vgg.load_state_dict(torch.load("vgg19.pth")) # Load VGG19 weights
+            self.vgg.eval()  
 
      
     def get_loss_dict(self, outputs, batch, metrics_dict=None):
         loss_dict = {}
+          
+        pred_images = outputs["rgb"].permute(2, 0, 1)
+        if pred_images.dim() == 3:
+            pred_images = pred_images.unsqueeze(0)
+
+        gt_images = batch["image"].permute(2, 0, 1)
+        if gt_images.dim() == 3:
+            gt_images = gt_images.unsqueeze(0)
         
-        gt_image = batch["image"]
-        pred_image = outputs["rgb"]  
-        loss_dict["rgb_loss"] = self.rgb_loss(gt_image, pred_image)
+        if gt_images.size() != pred_images.size():
+            gt_images = torch.nn.functional.interpolate(gt_images, size=pred_images.shape[2:], mode='bilinear', align_corners=False)
+
+        if self.config.warmup:
+            loss_dict["rgb_loss"] = self.rgb_loss(gt_images, pred_images)
+            
+            if self.config.use_lpips_loss:
+                pred_images = (pred_images * 2 - 1).clamp(-1, 1)
+                gt_images =  (gt_images * 2 - 1).clamp(-1, 1)
+
+                loss_dict["lpips_loss"] = self.config.weight * self.lpips(pred_images, gt_images)
+            
+            else :
+                loss_dict["dssim"] = self.config.weight *  (1 - self.ssim(pred_images, gt_images))
         
-        if self.config.use_lpips_loss:
-            if pred_image.dim() == 3:
-                pred_image = pred_image.unsqueeze(0)
-            if gt_image.dim() == 3:
-               gt_image = gt_image.unsqueeze(0)
+        else:
+            loss_dict["vgg_loss"] = self.vgg.vgg_loss(gt_images, pred_images, self.config.style_loss_weight)
 
-            pred_image = pred_image.permute(0, 3, 1, 2)
-            gt_image = gt_image.permute(0, 3, 1, 2)
-
-            pred_image = (pred_image * 2 - 1).clamp(-1, 1)
-            gt_image =  (gt_image * 2 - 1).clamp(-1, 1)
-
-            loss_dict["lpips_loss"] = self.config.lpips_loss_weight * self.lpips(pred_image, gt_image)
+        if self.training:
+            # Add loss from camera optimizer
+            self.camera_optimizer.get_loss_dict(loss_dict)
 
         
         return loss_dict

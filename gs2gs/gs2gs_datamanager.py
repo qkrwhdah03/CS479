@@ -17,7 +17,6 @@ import torch
 class Gs2gsDataManagerConfig(FullImageDatamanagerConfig):
     _target: Type = field(default_factory= lambda: Gs2gsDataManager)
 
-
 class Gs2gsDataManager(FullImageDatamanager):
     config: Gs2gsDataManagerConfig
 
