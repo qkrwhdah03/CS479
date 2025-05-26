@@ -18,7 +18,6 @@ if __name__ == '__main__':
     args = parser.parse()
 
     # Load Data
-    
     if args.data_dir.name != "images":
         data_parent_path = args.data_dir
         data_image_path = args.data_dir.joinpath("images")
@@ -50,6 +49,7 @@ if __name__ == '__main__':
         save_path = converted_image_path.joinpath(image_name)
         vutils.save_image(converted_image, save_path)
 
+    print("Done Converting")
 
     # Copying transform.json file
     transform_json_path = data_parent_path / "transforms.json"
@@ -60,6 +60,3 @@ if __name__ == '__main__':
         print(f"Saving transforms.json to {target_transform_path}")
     else:
         print("Warning: transforms.json not found in source data directory.")
-
-
-
