@@ -19,6 +19,13 @@ class Parser:
             required=True,
             help="Path to the target output directory"
         )
+        self.parser.add_argument(
+            "--target_size",
+            type= int,
+            nargs=2,
+            metavar=('WIDTH', 'HEIGHT'),
+            help="Target size as two integers: WIDTH HEIGHT"
+        )
     
     def parse(self,):
         args = self.parser.parse_args()
@@ -39,3 +46,4 @@ if __name__ == '__main__':
     args = parser.parse()
     print("Data directory:", args.data_dir)
     print("Target directory:", args.target_dir)
+    print(args.target_size)
