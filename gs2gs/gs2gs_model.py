@@ -37,14 +37,14 @@ class Gs2gsModelConfig(SplatfactoModelConfig):
 
     warmup: bool = True
     # warmup
-    use_l1_loss: bool = False
-    use_lpips_loss: bool = False
+    use_l1_loss: bool = True
+    use_lpips_loss: bool = True
     weight: float = 0.2
 
     # style transfer
     style_loss_weight: float = 1.0
 
-    num_random: int = 10000
+    num_random: int = 5000
     stop_split_at: int = 15000
     refine_every: int = 100
 
@@ -54,14 +54,13 @@ class Gs2gsModel(SplatfactoModel):
 
     def populate_modules(self):
         super().populate_modules()
+        
+        if self.config.use_l1_loss:
+            self.rgb_loss = L1Loss()
+        else:
+            self.rgb_loss = MSELoss()
 
-        if self.config.warmup:
-
-            if self.config.use_l1_loss:
-                self.rgb_loss = L1Loss()
-            else:
-                self.rgb_loss = MSELoss()
-            
+        if self.config.warmup: 
             self.psnr = PeakSignalNoiseRatio(data_range=1.0)
             self.ssim = SSIM(data_range=1.0, size_average=True, channel=3)
             self.lpips = LearnedPerceptualImagePatchSimilarity(normalize=True)
@@ -86,14 +85,12 @@ class Gs2gsModel(SplatfactoModel):
         
         if gt_images.size() != pred_images.size():
             gt_images = torch.nn.functional.interpolate(gt_images, size=pred_images.shape[2:], mode='bilinear', align_corners=False)
-
+        
         if self.config.warmup:
+
             loss_dict["rgb_loss"] = self.rgb_loss(gt_images, pred_images)
             
             if self.config.use_lpips_loss:
-                pred_images = (pred_images * 2 - 1).clamp(-1, 1)
-                gt_images =  (gt_images * 2 - 1).clamp(-1, 1)
-
                 loss_dict["lpips_loss"] = self.config.weight * self.lpips(pred_images, gt_images)
             
             else :

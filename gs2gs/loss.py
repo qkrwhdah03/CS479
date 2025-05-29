@@ -65,8 +65,9 @@ class VGG19(torch.nn.Module):
         block4_conv3 = self.relu(self.block4_conv3(block4_conv2))
         block4_conv4 = self.relu(self.block4_conv4(block4_conv3))
 
-        
-        return [torch.var_mean(t, dim=(2,3), unbiased=False) for t in [block1_conv1, block2_conv1, block3_conv1, block4_conv1]], block4_conv4
+        layer_list = [block1_conv1, block1_conv2, block2_conv1, block2_conv2, block3_conv1, block3_conv2, block3_conv3, block3_conv4, block4_conv1, block4_conv2, block4_conv3, block4_conv4]
+
+        return [torch.var_mean(t, dim=(2,3), unbiased=False) for t in layer_list],  layer_list
     
     def vgg_loss(self, gt_images, pred_images, alpha = 1.0):
         # pred)images : predicted images by the model 
@@ -74,11 +75,13 @@ class VGG19(torch.nn.Module):
         # Both tensor should be the same shape in the form of [B, C, H, W]
         # Pixel values should be normalized to [0,1]
 
-        gt_stats, gt_feature = self.forward(gt_images)
-        pred_stats, pred_feature = self.forward(pred_images)
+        gt_stats, gt_features = self.forward(gt_images)
+        pred_stats, pred_features = self.forward(pred_images)
 
         # Matching Feature
-        content_loss = torch.sum((gt_feature - pred_feature) ** 2)
+        content_loss = 0.0
+        for gt_feature, pred_feature in zip(gt_features, pred_features):
+            content_loss = torch.sum((gt_feature - pred_feature) ** 2)
 
         # Matching Feature Statistics
         style_loss = 0.0

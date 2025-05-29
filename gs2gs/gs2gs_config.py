@@ -83,7 +83,7 @@ gs2gs = MethodSpecification(
                 warmup= True,
                 use_l1_loss= False,
                 use_lpips_loss= False,
-                weight= 0.05,
+                weight= 0.1,
                 style_loss_weight= 0.5,
             ) 
         ),
